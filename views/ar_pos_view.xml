@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+        <record model="ir.ui.view" id="view_pfiscal_pos_inherit_form">
+            <field name="name">fiscal.pos.printer.form.inherit</field>
+            <field name="inherit_id" ref="l10n_ar_point_of_sale.pos_ar_view_form"/>
+            <field name="model">pos.ar</field>
+            <field name="arch" type="xml">
+                <notebook position="inside">
+                    <page string="Factura Electronica" attrs="{'invisible':[('print_type','!=', 'fiscal_printer' )]}">
+                        <group name="Fiscal Printer" colspan="2">
+                            <field name='fprinter_id' string="Fiscal Printer"/>
+                        </group>
+                    </page>
+                </notebook>
+            </field>
+        </record>
+    </data>
+</openerp>

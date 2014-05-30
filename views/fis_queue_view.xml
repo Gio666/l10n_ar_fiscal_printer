@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+        <!-- Top menu item -->
+
+        <menuitem id="menu_finance_fiscal" name="Fiscal Manager" parent="account.menu_finance" sequence="2"/>
+
+
+        <!-- Fiscal Invoices Views -->
+
+        <record id="fiscal_print_view" model="ir.ui.view">
+            <field name="name">fiscal.invoice.print.view</field>
+            <field name="model">account.invoice</field>
+            <field name="priority">50</field>
+            <field name="arch" type="xml">
+                  <tree colors="blue:state == 'open';gray:state == 'paid';red:state == 'cancel'" 
+                        string="SEND TO FISCAL PRINTER" create="false" edit="false" delete="false" >
+                    <field name="company_id" groups="base.group_multi_company" widget="selection"/>
+                    <field name="partner_id" groups="base.group_user"/>
+                    <field name="date_invoice"/>
+                    <field name="number"/>
+                    <field name="reference" invisible="1"/>
+                    <field name="name" invisible="1"/>
+                    <field name="journal_id" invisible="1"/>
+                    <field name="period_id" invisible="1" groups="account.group_account_user"/>
+                    <field name="user_id" invisible="1"/>
+                    <field name="origin" />
+                    <field name="currency_id" groups="base.group_multi_currency"/>
+                    <field name="residual" sum="Residual Amount"/>
+                    <field name="amount_untaxed" sum="Untaxed Amount"/>
+                    <field name="amount_total" sum="Total Amount"/>
+                    <field name="state"/>
+                    <field name="fiscalized" invisible="1"/>
+                  </tree>
+            </field>
+        </record>
+
+
+        <record id="action_fiscal_invoice" model="ir.actions.act_window">
+            <field name="name">Invoice to Fiscal Printer</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">account.invoice</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree</field>
+            <!--<field name="context">{'type':'out_invoice'}</field>-->
+            <field name="view_id" ref="fiscal_print_view" />
+            <field name="domain">[('state','in', ['open', 'paid']), ('fiscalized','=', False), 
+                                  ('type','in', ['out_invoice', 'out_refund']), ('to_printfiscal','=', False)]
+            </field>
+        </record>
+
+        
+        <menuitem action="action_fiscal_invoice" id="menu_finance_legal_print" parent="menu_finance_fiscal"/>
+
+        <record id="fiscal_close_tree_view" model="ir.ui.view">
+            <field name="name">fiscal.close.tree.view</field>
+            <field name="model">fiscal.printers</field>
+            <field name="priority">50</field>
+            <field name="arch" type="xml">
+                  <tree string="Printers" create="false" delete="false" >
+                        <field name="name"/>
+                        <field name="fiscal_model"/>
+                        <field name="fiscal_brand"/>
+                        <field name="state"/>
+                  </tree>
+            </field>
+        </record>
+
+        <record id="fiscal_close_form_view" model="ir.ui.view">
+            <field name="name">Fiscal Queue Manager</field>
+            <field name="model">fiscal.printers</field>
+            <field name="arch" type="xml">
+                <form string="Printers" edit="false" create="false" copy="false" delete="false" version="7.0">
+                    <header>
+                         <button name="send_verify" string="Verify Comm." type="object" states="disconnected,connected"/>
+                         <button name="get_status"   string="Printer Status"  type="object" states="connected"/>
+                         <button name="get_serial"   string="Serial"  type="object" states="connected"/>
+                         <button name="get_datetime"   string="Fiscal Date"  type="object" states="connected"/>
+                         <button name="send_closeX"   string="Close X"  type="object" states="connected"/>
+                         <button name="send_closeZ"   string="Close Z"  type="object" states="connected"/>
+                         <button name="action_enable_print"  string="Enable"  type="object" states="inactive"/>
+                         <button name="action_disable_print"  string="Disable"  type="object" states="disconnected,connected"/>
+                         <field  name="state" widget="statusbar" readonly="1" 
+                                 statusbar_colors='{"inactive":"red","disconnected":"red","connected":"green"}' />
+                    </header>
+                    <sheet>
+                      <group col="7">
+                        <!--<h2><field name="pos_ar_id" nolabel="1" readonly="1" colspan="5" class="oe_view_only"
+                               style="text-transform:uppercase;color:#000000;"/></h2>-->
+                        <field name="printerstat"  readonly="1" nolabel="1" colspan="2" invisible="1"
+                               style="font-weight:bold;color:#FFFFFF;text-align:center;background-color:blue"/>
+                      </group>
+                      <group col="6" class="oe_view_only">
+                        <field name="name" />
+                        <field name="fiscal_model" readonly="1"/>
+                        <field name="fiscal_brand"/>
+                        <field name="fiscal_separator"/>
+                        <field name="fiscal_widthtext"/>
+                        <field name="fiscal_hostname"/>
+                        <field name="fiscal_port"/>
+                        <field name="fiscal_buffer"/>
+                        <field name="fiscal_device"/>
+                      </group>
+                      <separator string='Fiscal Invoices Queue'/>
+                      <field name="fisqueue_ids"  widget="one2many" mode="tree" >
+                        <tree string="Queue Invoices" editable="top">
+                              <field name="partner_id"/>
+                              <field name="number"/>
+                              <field name="date_invoice"/>
+                              <field name="reference" invisible="1"/>
+                              <field name="name" invisible="1"/>
+                              <field name="journal_id" invisible="1"/>
+                              <field name="period_id" invisible="1" groups="account.group_account_user"/>
+                              <field name="user_id" invisible="1"/>
+                              <field name="origin" />
+                              <field name="currency_id" groups="base.group_multi_currency"/>
+                              <field name="residual" invisible="1"/>
+                              <field name="amount_untaxed" />
+                              <field name="amount_total" />
+                              <field name="state" />
+                              <field name="fiscalized" invisible="1" />
+                              <field name="fiscal_status" readonly="1" />
+                         </tree>
+                      </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_fiscal_close" model="ir.actions.act_window">
+            <field name="name">Fiscal Printer Queue</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">fiscal.printers</field>
+            <field name="auto_refresh" eval="10"/>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem action="action_fiscal_close" id="menu_finance_fiscal_close"
+                  parent="menu_finance_fiscal"/>
+
+
+    </data>
+</openerp>
