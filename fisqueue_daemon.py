@@ -31,9 +31,12 @@ from ConfigParser import SafeConfigParser
 # VARIABLES DE CONEXION A OPENERP
 UID=1
 DBUSER='admin'
-DBNAME='TEST_PFISCAL'
+DBNAME='TEST_FE'
 DB='localhost'
 PWD='admin'
+DBDRIVEUSER='postgres'
+
+def get_num(x): return float(''.join(ele for ele in x if ele.isdigit() or ele == '.'))
 
 def _convert_ref(ref,denomination):
 		return "CI " + denomination + ref
@@ -269,21 +272,29 @@ def hasar_invoice():
 		if not invoice_data['payment_ids']:
 			logging.info('NO HAY PAGOS')
 		else :
-			for payment in invoice_data['payment_ids']:
-				payment_fields= ['quantity','credit','debit','journal_id']
-				payment_data=sock.execute(DBNAME, UID, PWD, 'account.move.line', 'read', payment, payment_fields)
-				resp = fis_paymment(payment_data['journal_id'][1], str(payment_data['credit']),'T','','')
-		                if resp == ['FALLO_COMUNICACION']:
-        	        	        print "    FALLO COMUNICACION, SE SALTEA OPERACION"
-                	        	continue
-				print "RESPUESTA PAGO: ",resp
+			dbconn = dbdrive.connect(database=DBNAME,host=DB,user=DBDRIVEUSER)
+			cursor = dbconn.cursor()
+			cursor.execute("""SELECT a.name as name, a.amount as amount FROM payment_mode_receipt_line as a, account_voucher as b, account_move_line as c WHERE a.voucher_id = b.id AND b.move_id = c.move_id AND c.id = ANY(%s) UNION ALL SELECT 'CH N: ' || trim(a.number) || '|' || substring(trim(d.name) from 1 for 12) || '|' || to_char(a.issue_date, 'DD/MM/YYYY') || '|' || coalesce(to_char(a.payment_date, 'DD/MM/YYYY'),''), a.amount as amount FROM account_third_check as a, account_voucher as b, account_move_line as c, res_bank d WHERE a.source_voucher_id = b.id AND b.move_id = c.move_id AND a.bank_id = d.id AND c.id = ANY(%s)""",(invoice_data['payment_ids'],invoice_data['payment_ids'],))
+                        
+			payment_mode_receipt = cursor.fetchall()
+
+			if len(payment_mode_receipt) <= 3:
+
+				for payment in payment_mode_receipt:
+					resp = fis_paymment(payment[0],str(payment[1]),'T','','')
+					if resp == ['FALLO_COMUNICACION']:
+						print "    FALLO COMUNICACION, SE SALTEA OPERACION"
+						continue
+					print "RESPUESTA PAGO: ",resp
+			else :
+				logging.info('MAS DE 3 LINEAS DE PAGO, NO IMPRIME EN FACTURA')
 
 		#MANDO COMANDO DE CIERRE FISCAL
 		#def fis_closefiscal(n_copias)
 		resp = fis_closefiscal('1')
-                if resp == ['FALLO_COMUNICACION']:
-                        print "    FALLO COMUNICACION, SE SALTEA OPERACION"
-                        continue
+		if resp == ['FALLO_COMUNICACION']:
+			print "    FALLO COMUNICACION, SE SALTEA OPERACION"
+			continue
 		print "    RESPUESTA CIERRE FISCAL: ",resp
 
 		#NO TOMO resp[0] PORQUE PUEDE VENIR CON RUIDO
@@ -305,7 +316,7 @@ def hasar_invoice():
 			
 			#CONEXION A LA BASE DE DATOS PARA ACTUALIZAR CAMPOS DE REFERENCIA.
 			#SOBRE ACCOUNT_MOVE, ACCOUNT_MOVE_LINE y ACCOUNT_ANALYTIC_LINE
-			dbconn = dbdrive.connect(database=DBNAME,host=DB,user="postgres")
+			dbconn = dbdrive.connect(database=DBNAME,host=DB,user=DBDRIVEUSER)
 			cursor = dbconn.cursor()
 			cursor.execute("""UPDATE account_move SET ref = %s WHERE id = %s""",(ref,move_id))
 			cursor.execute("""UPDATE account_move_line SET ref = %s WHERE move_id = %s""",(ref,move_id))
