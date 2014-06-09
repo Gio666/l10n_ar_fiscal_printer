@@ -43,9 +43,10 @@ conectarse por medio de XMLRPC y enviar las instrucciones a la impresora.
 """,
 
 'depends' : [
-	'base',
-	'account',
-	'l10n_ar_point_of_sale',
+    'base',
+    'account',
+    'l10n_ar_point_of_sale',
+    'l10n_ar_account_check',
 ],
 
 'data': [
